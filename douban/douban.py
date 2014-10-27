@@ -55,18 +55,16 @@ class Win(cli.Cli):
         self.song_time = -1 # 歌曲剩余播放时间
         self.rate = ['★ '*i for i in range(1, 6)] # 歌曲评分
         self.lrc_display = 0 # 是否显示歌词
+        self.lrc_find = 0
         self.pause = True
         self.mplayer_controller = os.path.join(tempfile.mkdtemp(), 'mplayer_controller')
         self.loop = False
         self.is_muted = False # 是否静音
         os.mkfifo(self.mplayer_controller)
         # 守护线程
-        self.t1 = threading.Thread(target=self.protect)
-        self.t2 = threading.Thread(target=self.display_time)
-        self.t3 = threading.Thread(target=self.display_lrc)
-        self.t1.start()
-        self.t2.start()
-        self.t3.start()
+        self.t1 = threading.Thread(target=self.protect).start()
+        self.t2 = threading.Thread(target=self.display_time).start()
+        self.t3 = threading.Thread(target=self.display_lrc).start()
         super(Win, self).__init__(self.douban.lines)
         # 启动自动播放
         self.SUFFIX_SELECTED = '正在加载请稍后...'
@@ -92,6 +90,12 @@ class Win(cli.Cli):
                 option = option.upper()
                 if self.KEYS.has_key(option):
                     self.KEYS[option] = config.get('key', option)
+
+    def find_lrc(self):
+        self.lrc_find = 0
+        self.lrc_dict = self.douban.get_lrc()
+        if self.lrc_dict:
+            self.lrc_find = 1
 
     # 歌词线程
     def display_lrc(self):
@@ -122,6 +126,8 @@ class Win(cli.Cli):
                     self.TITLE += '  ' + colored('↺', 'red')
                 else:
                     self.TITLE += '  ' + colored('→', 'red')
+                if self.lrc_display:
+                    self.TITLE += 'Lrc'
                 self.TITLE += '\r'
                 self.display()
                 if not self.pause:
@@ -132,7 +138,7 @@ class Win(cli.Cli):
 
     # 增加一个歌词界面的判断
     def display(self):
-        if not self.lrc_display:
+        if not self.lrc_find:
             cli.Cli.display(self)
 
     # 获取音量
@@ -185,6 +191,7 @@ class Win(cli.Cli):
 
     # 播放歌曲
     def play(self):
+        self.lrc_find = 0
         self.lrc_dict = {} # 歌词清空
         if not self.loop:
             self.douban.get_song()
@@ -204,10 +211,12 @@ class Win(cli.Cli):
         self.pause = False
         self.display()
         self.notifySend()
-        if self.lrc_display: # 获取歌词
-            self.lrc_dict = self.douban.get_lrc()
-            if not self.lrc_dict: # 歌词获取失败,关闭歌词界面
-                self.lrc_display = 0
+        if self.lrc_display:
+            self.find_lrc()
+        # if self.lrc_display: # 获取歌词
+        #     self.lrc_dict = self.douban.get_lrc()
+        #     if not self.lrc_dict: # 歌词获取失败,关闭歌词界面
+        #         self.lrc_display = 0
         self.start = 1
 
     # 暂停歌曲
@@ -266,12 +275,12 @@ class Win(cli.Cli):
             self.display()
             i = getch._Getch()
             c = i()
-            if self.lrc_display: # 歌词界面截断
-                if c == self.KEYS['QUIT']:
-                    self.lrc_display = 0
-                    continue
-                else:
-                    continue
+            # if self.lrc_display: # 歌词界面截断
+            #     if c == self.KEYS['QUIT']:
+            #         self.lrc_display = 0
+            #         continue
+            #     else:
+            #         continue
             if c == self.KEYS['UP']:
                 self.updown(-1)
             elif c == self.KEYS['DOWN']:
@@ -353,16 +362,22 @@ class Win(cli.Cli):
             elif c == '-':
                 self.change_volume(-1)
             elif c == self.KEYS['LRC']:
-                tmp = self.SUFFIX_SELECTED
-                self.SUFFIX_SELECTED = '正在加载歌词'
-                self.display()
-                self.lrc_display = 1
-                self.SUFFIX_SELECTED = tmp
-                self.lrc_dict = self.douban.get_lrc()
-                if self.lrc_dict:
-                    self.lrc_display = 1
-                else:
+                if self.lrc_display:
                     self.lrc_display = 0
+                    self.lrc_find = 0
+                else:
+                    self.find_lrc()
+                    self.lrc_display = 1
+                # tmp = self.SUFFIX_SELECTED
+                # self.SUFFIX_SELECTED = '正在加载歌词'
+                # self.display()
+                # self.lrc_display = 1
+                # self.SUFFIX_SELECTED = tmp
+                # self.lrc_dict = self.douban.get_lrc()
+                # if self.lrc_dict:
+                #     self.lrc_display = 1
+                # else:
+                #     self.lrc_display = 0
 
 class Lrc(cli.Cli):
     def __init__(self, lrc_dict, win):
@@ -385,7 +400,7 @@ class Lrc(cli.Cli):
     # 显示歌词
     def display_line(self):
         while True:
-            if not self.win.lrc_display:
+            if not self.win.lrc_display or not self.win.lrc_find or self.win.q:
                 break
             self.display()
             if self.song_time < self.length:
@@ -412,6 +427,8 @@ class Lrc(cli.Cli):
                     print i.center(self.screenline_char - 1) + '\r'
                 else:
                     print line.center(self.screenline_char - 9) + '\r'
+
+
 
 def main():
     douban = douban_token.Doubanfm()
