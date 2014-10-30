@@ -11,19 +11,21 @@ import getpass
 import tempfile
 import lrc2dic
 #---------------------------------------------------------------------------
+
+
 class Doubanfm(object):
     def __init__(self):
         self.login_data = {}
         self.channel_id = 0
-        self.lines = [] # 要输出到终端的行
+        self.lines = []  # 要输出到终端的行
         # 红心兆赫需要手动添加
         self.channels = [{
-            'name':'红心兆赫',
-            'channel_id' : -3
+            'name': '红心兆赫',
+            'channel_id': -3
             }]
         self.pro = 0
-        self.playlist = [] # 播放列表
-        self.playingsong = {} # 当前播放歌曲
+        self.playlist = []  # 播放列表
+        self.playingsong = {}  # 当前播放歌曲
         print '''
         ──╔╗─────╔╗────────╔═╗
         ──║║─────║║────────║╔╝
@@ -33,20 +35,20 @@ class Doubanfm(object):
         ╚══╩══╩══╩══╩╝╚╩╝╚╩╩╝╚╩╩╝
 
         '''
-        self.login() # 登陆
-        self.get_channels() # 获取频道列表
-        self.get_channellines() # 重构列表用以显示
+        self.login()  # 登陆
+        self.get_channels()  # 获取频道列表
+        self.get_channellines()  # 重构列表用以显示
         self.is_pro()
         if self.pro == 1:
-            self.login_data['kbps'] = 192 # 128 64 歌曲kbps的选择
+            self.login_data['kbps'] = 192  # 128 64 歌曲kbps的选择
 
     # 查看是否是pro用户
     def is_pro(self):
         self.get_playlist()
         self.get_song()
-        if  int(self.playingsong['kbps']) != 64:
+        if int(self.playingsong['kbps']) != 64:
             self.pro = 1
-        self.playingsong = {} # 清空列表
+        self.playingsong = {}  # 清空列表
 
     # 登陆界面
     def win_login(self):
@@ -57,22 +59,22 @@ class Doubanfm(object):
     # 登陆douban.fm获取token
     def login(self):
         path_token = os.path.expanduser('~/.douban_token.txt')
-        if  os.path.exists(path_token): # 已登陆
+        if os.path.exists(path_token):  # 已登陆
             with open(path_token, 'r') as f:
                 self.login_data = pickle.load(f)
                 self.token = self.login_data['token']
                 self.user_name = self.login_data['user_name']
                 self.user_id = self.login_data['user_id']
                 self.expire = self.login_data['expire']
-        else: # 未登陆
+        else:  # 未登陆
             while True:
                 self.email, self.password = self.win_login()
                 login_data = {
-                        'app_name': 'radio_desktop_win',
-                        'version': '100',
-                        'email': self.email,
-                        'password': self.password
-                        }
+                    'app_name': 'radio_desktop_win',
+                    'version': '100',
+                    'email': self.email,
+                    'password': self.password
+                    }
                 s = requests.post('http://www.douban.com/j/app/login', login_data)
                 dic = eval(s.text)
                 if dic['r'] == 1:
@@ -84,13 +86,12 @@ class Doubanfm(object):
                     self.user_id = dic['user_id']
                     self.expire = dic['expire']
                     self.login_data = {
-                        'app_name' : 'radio_desktop_win',
-                        'version' : '100',
-                        'user_id' : self.user_id,
-                        'expire' : self.expire,
-                        'token' : self.token,
-                        'user_name' : self.user_name
-                            }
+                        'app_name': 'radio_desktop_win',
+                        'version': '100',
+                        'user_id': self.user_id,
+                        'expire': self.expire,
+                        'token': self.token,
+                        'user_name': self.user_name}
                     with open(path_token, 'w') as f:
                         pickle.dump(self.login_data, f)
                     break
@@ -111,7 +112,7 @@ PAUSE = p
 LOOP = l
 MUTE = m
 LRC = o
-''' # 这个很丑,怎么办
+'''  # 这个很丑,怎么办
             with open(path_config, 'w') as F:
                 F.write(config)
 
